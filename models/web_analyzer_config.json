@@ -1,0 +1,31 @@
+{
+  "analyzer": "static_html_rules_v1",
+  "parser": "BeautifulSoup with Python html.parser; no scripts or external resources are executed/fetched",
+  "score_range": [
+    0.0,
+    1.0
+  ],
+  "score_method": "weighted additive indicators, capped at 1.0",
+  "weights": {
+    "password_input": 0.25,
+    "hidden_input": 0.05,
+    "form": 0.1,
+    "external_form": 0.3,
+    "iframe": 0.1,
+    "inline_event": 0.1,
+    "external_link_ratio": 0.1
+  },
+  "features": [
+    "total_links",
+    "external_links",
+    "internal_links",
+    "external_link_ratio",
+    "form_count",
+    "password_input_count",
+    "hidden_input_count",
+    "iframe_count",
+    "script_count",
+    "external_form_count",
+    "inline_event_attribute_count"
+  ]
+}

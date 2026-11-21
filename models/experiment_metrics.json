@@ -1,0 +1,375 @@
+{
+  "protocol": {
+    "e1_e2": "Metrics from the provided held-out URL and text test splits.",
+    "e3": "Four deterministic authored HTML fixtures; fixture checks only, not a labeled dataset or population metrics.",
+    "e4": "Exploratory controlled pairing of real held-out URL and text rows by class and source row order. No rows were added to training. The test datasets have no linkage, so this does not estimate naturally paired multimodal performance. Cross-class pairs have conflicting labels and are descriptive only.",
+    "e4_html": "No held-out paired HTML examples exist; no three-modality accuracy is claimed.",
+    "binary_decision": "For E1/E2 and concordant E4 summaries, scores >= 0.5 map to phishing class 1; lower scores map to 0. This binary midpoint is separate from the user-facing 0.35/0.65 three-way decisions."
+  },
+  "E1_url_test": {
+    "accuracy": 0.8736445011106876,
+    "precision": 0.678773204196933,
+    "recall": 0.8339360709286048,
+    "f1": 0.7483968906221373,
+    "false_positive_rate": 0.11480444557563417,
+    "confusion_matrix": [
+      [
+        52169,
+        6766
+      ],
+      [
+        2847,
+        14297
+      ]
+    ]
+  },
+  "E2_text_test": {
+    "accuracy": 0.9859486679662118,
+    "precision": 0.9837561881188119,
+    "recall": 0.9894196359110005,
+    "f1": 0.9865797843456675,
+    "false_positive_rate": 0.01784197111299915,
+    "confusion_matrix": [
+      [
+        5780,
+        105
+      ],
+      [
+        68,
+        6359
+      ]
+    ]
+  },
+  "E3_html_fixtures": [
+    {
+      "name": "benign_static_article",
+      "expected_structural_behavior": "benign",
+      "risk_score": 0.0,
+      "indicators": [],
+      "fixture_check_passed": true
+    },
+    {
+      "name": "benign_plain_page",
+      "expected_structural_behavior": "benign",
+      "risk_score": 0.0,
+      "indicators": [],
+      "fixture_check_passed": true
+    },
+    {
+      "name": "credential_harvesting_template",
+      "expected_structural_behavior": "phishing_fixture",
+      "risk_score": 0.85,
+      "indicators": [
+        "Password input field detected",
+        "Hidden input field detected",
+        "Form submits to external domain",
+        "Iframe detected",
+        "Inline event handler detected"
+      ],
+      "fixture_check_passed": true
+    },
+    {
+      "name": "external_credential_form",
+      "expected_structural_behavior": "phishing_fixture",
+      "risk_score": 0.65,
+      "indicators": [
+        "Password input field detected",
+        "Form submits to external domain"
+      ],
+      "fixture_check_passed": true
+    }
+  ],
+  "E4_controlled_unpaired_pairs": {
+    "same_label_pair_counts": {
+      "0": 5885,
+      "1": 6427
+    },
+    "url_only_on_selected_rows": {
+      "accuracy": 0.8535575048732943,
+      "precision": 0.8825281270681667,
+      "recall": 0.8299362066282869,
+      "f1": 0.8554245850372865,
+      "false_positive_rate": 0.12064570943075616,
+      "confusion_matrix": [
+        [
+          5175,
+          710
+        ],
+        [
+          1093,
+          5334
+        ]
+      ]
+    },
+    "text_only_on_selected_rows": {
+      "accuracy": 0.9859486679662118,
+      "precision": 0.9837561881188119,
+      "recall": 0.9894196359110005,
+      "f1": 0.9865797843456675,
+      "false_positive_rate": 0.01784197111299915,
+      "confusion_matrix": [
+        [
+          5780,
+          105
+        ],
+        [
+          68,
+          6359
+        ]
+      ]
+    },
+    "late_fusion_on_selected_rows": {
+      "accuracy": 0.9912280701754386,
+      "precision": 0.9917509727626459,
+      "recall": 0.991442352575074,
+      "f1": 0.9915966386554622,
+      "false_positive_rate": 0.009005947323704333,
+      "confusion_matrix": [
+        [
+          5832,
+          53
+        ],
+        [
+          55,
+          6372
+        ]
+      ]
+    },
+    "cross_class_scenarios": {
+      "url_safe_text_phishing": {
+        "pair_count": 6427,
+        "mean_fused_score": 0.6705004891265767,
+        "decision_counts": {
+          "Legitimate": 228,
+          "Suspicious": 3045,
+          "Phishing": 3154
+        },
+        "ground_truth": "conflicting source labels; no single pair-level ground truth is assigned"
+      },
+      "url_phishing_text_safe": {
+        "pair_count": 5885,
+        "mean_fused_score": 0.3388509057518183,
+        "decision_counts": {
+          "Legitimate": 2531,
+          "Suspicious": 3111,
+          "Phishing": 243
+        },
+        "ground_truth": "conflicting source labels; no single pair-level ground truth is assigned"
+      }
+    }
+  },
+  "E5_error_analysis": {
+    "url": {
+      "FP": {
+        "count": 6766,
+        "median_url_length": 38.0,
+        "errors_without_explicit_suspicious_token": 6588,
+        "errors_without_explicit_suspicious_token_fraction": 0.9736919893585575,
+        "examples": [
+          {
+            "row_index_in_test_split": 10,
+            "true_label": 0,
+            "predicted_label": 1,
+            "phishing_score": 0.5891765676781583,
+            "excerpt": "accessottawa.com/business/photography/photo.htm"
+          },
+          {
+            "row_index_in_test_split": 13,
+            "true_label": 0,
+            "predicted_label": 1,
+            "phishing_score": 0.6522604926021317,
+            "excerpt": "emorymotorsports.com/outlaws"
+          },
+          {
+            "row_index_in_test_split": 20,
+            "true_label": 0,
+            "predicted_label": 1,
+            "phishing_score": 0.7510831050926107,
+            "excerpt": "trainstuff.info/railroads/k/kansascityterminal/kansascityterminal.htm"
+          },
+          {
+            "row_index_in_test_split": 34,
+            "true_label": 0,
+            "predicted_label": 1,
+            "phishing_score": 0.5448888150719556,
+            "excerpt": "acronyms.thefreedictionary.com/KPRS"
+          }
+        ]
+      },
+      "FN": {
+        "count": 2847,
+        "median_url_length": 36.0,
+        "errors_without_explicit_suspicious_token": 2847,
+        "errors_without_explicit_suspicious_token_fraction": 1.0,
+        "examples": [
+          {
+            "row_index_in_test_split": 14,
+            "true_label": 1,
+            "predicted_label": 0,
+            "phishing_score": 0.3225102192628637,
+            "excerpt": "dorgashotel.com.br/"
+          },
+          {
+            "row_index_in_test_split": 28,
+            "true_label": 1,
+            "predicted_label": 0,
+            "phishing_score": 0.4345165744474181,
+            "excerpt": "raenaga12055.com/"
+          },
+          {
+            "row_index_in_test_split": 45,
+            "true_label": 1,
+            "predicted_label": 0,
+            "phishing_score": 0.22058443119159657,
+            "excerpt": "services.runescape.co.cm/m=forums/forums.wz?1439"
+          },
+          {
+            "row_index_in_test_split": 55,
+            "true_label": 1,
+            "predicted_label": 0,
+            "phishing_score": 0.476678598341598,
+            "excerpt": "www.canalafrique.tv/components/com_banners/models/mail.html"
+          }
+        ]
+      }
+    },
+    "text": {
+      "FP": {
+        "count": 105,
+        "median_character_length": 358.0,
+        "most_common_tokens_in_errors": [
+          [
+            "httpsmcs",
+            139
+          ],
+          [
+            "msgs",
+            139
+          ],
+          [
+            "cusertm",
+            139
+          ],
+          [
+            "paceedu",
+            139
+          ],
+          [
+            "com",
+            111
+          ],
+          [
+            "email",
+            93
+          ],
+          [
+            "httpemreactcomgoaspbpla",
+            82
+          ],
+          [
+            "deliver",
+            65
+          ]
+        ],
+        "examples": [
+          {
+            "row_index_in_test_split": 97,
+            "true_label": 0,
+            "predicted_label": 1,
+            "phishing_score": 0.6204563831313762,
+            "excerpt": "california prices fun"
+          },
+          {
+            "row_index_in_test_split": 212,
+            "true_label": 0,
+            "predicted_label": 1,
+            "phishing_score": 0.6752919099496485,
+            "excerpt": "happy holidays wish wonderful holidays happy happy new year many blessings shirley"
+          },
+          {
+            "row_index_in_test_split": 257,
+            "true_label": 0,
+            "predicted_label": 1,
+            "phishing_score": 0.5142432958274961,
+            "excerpt": "emma kennedy dpcteaqmlfhairtricitycom pictures love bites meant censor ones ________________________________ dqcxzgkebrekxpencrackmicecom mailtodqcxzgkebrekxpencrackmicecom behalf eoin parker sent 16 october 2007 1240 undisclosedrecipients \u2026"
+          },
+          {
+            "row_index_in_test_split": 311,
+            "true_label": 0,
+            "predicted_label": 1,
+            "phishing_score": 0.6988091950156521,
+            "excerpt": "6 1119 disc kinship terms 1113 steven straight comments brevity son sole factor involved since dad mom pattern father mother son different used true vocative used usuallypostposed bonding form brother different still since used either way m\u2026"
+          }
+        ]
+      },
+      "FN": {
+        "count": 68,
+        "median_character_length": 826.5,
+        "most_common_tokens_in_errors": [
+          [
+            "site",
+            91
+          ],
+          [
+            "listing",
+            75
+          ],
+          [
+            "please",
+            72
+          ],
+          [
+            "information",
+            70
+          ],
+          [
+            "new",
+            58
+          ],
+          [
+            "email",
+            57
+          ],
+          [
+            "one",
+            52
+          ],
+          [
+            "list",
+            46
+          ]
+        ],
+        "examples": [
+          {
+            "row_index_in_test_split": 92,
+            "true_label": 1,
+            "predicted_label": 0,
+            "phishing_score": 0.450455540186204,
+            "excerpt": "markusnilssonlandskronase outlook web network account password expire today change password please follow instructions visit outlook web digital intranet page access district desktop computers ie district drives vpn access outside district \u2026"
+          },
+          {
+            "row_index_in_test_split": 272,
+            "true_label": 1,
+            "predicted_label": 0,
+            "phishing_score": 0.3310651884735924,
+            "excerpt": "venture reporter newsrisingtidestudioscom cmshttpwwwcmsummitcomimagesright_02gif cmshttpwwwcmsummitcomimagescms_titlegif dear friends online content business fantastic sound crazy perhaps advertising online taking chin past two years online\u2026"
+          },
+          {
+            "row_index_in_test_split": 746,
+            "true_label": 1,
+            "predicted_label": 0,
+            "phishing_score": 0.3681593290883116,
+            "excerpt": "order shipment careamaznusshipment2co amazon order confirmation hello josemonkeyorg thank shopping us well send confirmation items ship details order 99149582161093584 shipment 1 2 arriving saturday august 15 view manage order ship mike haw\u2026"
+          },
+          {
+            "row_index_in_test_split": 1051,
+            "true_label": 1,
+            "predicted_label": 0,
+            "phishing_score": 0.3002847696136892,
+            "excerpt": "wonderful short motion detectors 70 savings b e n b e n meds want info see difference today turn notifications www consummate mnsdhhj com sayonara html employers also asked list unusual questions asked job candidates buck funny things prese\u2026"
+          }
+        ]
+      }
+    }
+  }
+}

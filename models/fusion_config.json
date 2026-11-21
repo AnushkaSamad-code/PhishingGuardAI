@@ -1,0 +1,15 @@
+{
+  "weights": {"text": 0.45, "url": 0.35, "html": 0.20, "header": 0.12},
+  "thresholds": {"legitimate_upper": 0.35, "suspicious_upper": 0.65},
+  "confidence": {"default": 1.0, "html_rule_based": 0.65, "email_header_rule_based": 0.80},
+  "confidence_method": "For URL/text, abs(2 * predicted phishing score - 1); HTML uses a fixed 0.65 heuristic confidence because no labeled HTML evaluation set exists.",
+  "fusion_method": "Single available modality passes through unchanged. For multiple modalities, base weights are multiplied by confidence and normalized over present modalities.",
+  "weights_are_empirically_tuned": false,
+  "escalation": {
+    "enabled": true,
+    "url_score_minimum": 0.90,
+    "requires_password_input": true,
+    "requires_external_form": true,
+    "risk_score_floor": 0.85
+  }
+}

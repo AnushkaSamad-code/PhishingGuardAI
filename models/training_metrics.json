@@ -1,0 +1,82 @@
+{
+  "url": {
+    "validation": {
+      "accuracy": 0.8741439819135373,
+      "precision": 0.6792140151515151,
+      "recall": 0.836687080781569,
+      "f1": 0.7497713315039853,
+      "false_positive_rate": 0.11495910679743442,
+      "confusion_matrix": [
+        [
+          52159,
+          6775
+        ],
+        [
+          2800,
+          14345
+        ]
+      ]
+    },
+    "selected_parameters": {
+      "max_leaf_nodes": 31,
+      "max_iter": 120,
+      "learning_rate": 0.08
+    },
+    "iterations_used": 120,
+    "candidate_runs": [
+      {
+        "parameters": {
+          "max_leaf_nodes": 15,
+          "max_iter": 120,
+          "learning_rate": 0.1
+        },
+        "validation": {
+          "accuracy": 0.8647195678176632,
+          "precision": 0.6594388348611047,
+          "recall": 0.826596675415573,
+          "f1": 0.7336163163888602,
+          "false_positive_rate": 0.12418977160891845,
+          "confusion_matrix": [
+            [
+              51615,
+              7319
+            ],
+            [
+              2973,
+              14172
+            ]
+          ]
+        },
+        "iterations_used": 120
+      },
+      {
+        "parameters": {
+          "max_leaf_nodes": 31,
+          "max_iter": 120,
+          "learning_rate": 0.08
+        },
+        "validation": {
+          "accuracy": 0.8741439819135373,
+          "precision": 0.6792140151515151,
+          "recall": 0.836687080781569,
+          "f1": 0.7497713315039853,
+          "false_positive_rate": 0.11495910679743442,
+          "confusion_matrix": [
+            [
+              52159,
+              6775
+            ],
+            [
+              2800,
+              14345
+            ]
+          ]
+        },
+        "iterations_used": 120
+      }
+    ],
+    "training_rows": 355035,
+    "validation_rows": 76079
+  },
+  "text_model": "Existing text_model.pkl was not retrained or overwritten."
+}
