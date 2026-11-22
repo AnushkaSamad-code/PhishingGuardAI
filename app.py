@@ -5,12 +5,15 @@ from datetime import datetime
 from html import escape
 import json
 from pathlib import Path
+import re
+from urllib.parse import urlsplit, urlunsplit
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent
+SCAN_HISTORY_PATH = ROOT / "data" / "scan_history.json"
 
 st.set_page_config(page_title="PhishGuard AI V3", layout="wide",
                    initial_sidebar_state="collapsed")
@@ -43,6 +46,178 @@ PRESETS = {
     "spoofed": {"unified": SPOOFED_EML, "url": "", "html": ""},
     "reset": {"unified": "", "url": "", "html": ""},
 }
+
+
+def _sanitize_text(value: object, limit: int = 200) -> str:
+    text = escape(str(value or ""), quote=False)
+    text = re.sub(
+        r"(?i)\b(password|passwd|passcode|secret|token|api[_-]?key|authorization|bearer)\b\s*[:=]\s*[^\s&,;]+",
+        r"\1=[REDACTED]",
+        text,
+    )
+    text = re.sub(r"(?i)\b(password|passcode|secret)\b\s+is\s+[^\s,;]+", r"\1 is [REDACTED]", text)
+    return " ".join(text.replace("\r", " ").replace("\n", " ").split())[:limit]
+
+
+def _sanitize_url(value: object) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        parts = urlsplit(raw)
+        host = parts.hostname or ""
+        if parts.port:
+            host = f"{host}:{parts.port}"
+        if ":" in host and not host.startswith("["):
+            host = f"[{host}]"
+        netloc = host
+        if parts.scheme and netloc:
+            return escape(urlunsplit((parts.scheme, netloc, parts.path, "", "")).strip(), quote=False)[:500]
+        return escape(parts.path or host or raw.split("?", 1)[0].split("#", 1)[0], quote=False)[:500]
+    except (TypeError, ValueError):
+        return "[invalid URL]"
+
+
+def _sanitize_preview(value: object, limit: int = 96) -> str:
+    text = str(value or "").strip()
+    if re.match(r"(?i)^https?://", text):
+        text = _sanitize_url(text)
+    else:
+        text = re.sub(
+            r"https?://[^\s]+",
+            lambda match: _sanitize_url(match.group(0).rstrip(".,;)")),
+            text,
+            flags=re.I,
+        )
+        text = _sanitize_text(text, limit)
+    return text[:limit]
+
+
+def _sanitize_result(result: dict) -> dict:
+    final_label = result.get("final_label")
+    if final_label not in {"Legitimate", "Suspicious", "Phishing"}:
+        final_label = "Suspicious"
+
+    modalities = []
+    for modality in result.get("modalities_used", []):
+        if modality in {"url", "text", "html", "header"}:
+            modalities.append(modality)
+    if not modalities:
+        modalities = []
+
+    breakdown = {}
+    for modality, detail in result.get("modality_breakdown", {}).items():
+        if modality not in {"url", "text", "html", "header"} or not isinstance(detail, dict):
+            continue
+        try:
+            score = float(detail.get("score", 0.0))
+        except (TypeError, ValueError):
+            score = 0.0
+        breakdown[modality] = {
+            "score": max(0.0, min(1.0, score)),
+            "indicators": [_sanitize_text(item, 200) for item in detail.get("indicators", [])][:20],
+        }
+
+    try:
+        risk_percentage = float(result.get("risk_percentage", 0.0))
+    except (TypeError, ValueError):
+        risk_percentage = 0.0
+    risk_percentage = max(0.0, min(100.0, risk_percentage))
+
+    links = []
+    for item in result.get("extracted_links", [])[:30]:
+        if not isinstance(item, dict):
+            continue
+        links.append({
+            "display_text": _sanitize_text(item.get("display_text", ""), 160),
+            "actual_href": _sanitize_url(item.get("actual_href", "")),
+            "is_mismatch": bool(item.get("is_mismatch", False)),
+            "risk_note": _sanitize_text(item.get("risk_note", ""), 200),
+        })
+
+    input_sha256 = str(result.get("input_sha256", ""))
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", input_sha256):
+        input_sha256 = ""
+
+    return {
+        "final_label": final_label,
+        "risk_score": risk_percentage / 100.0,
+        "risk_percentage": risk_percentage,
+        "modalities_used": modalities,
+        "modality_breakdown": breakdown,
+        "indicators": [_sanitize_text(item, 200) for item in result.get("indicators", [])][:30],
+        "extracted_links": links,
+        "highlighted_tokens": [],
+        "input_sha256": input_sha256,
+        "disclaimer": "Static analysis only. No links were visited and submitted scripts were not executed.",
+    }
+
+
+def _load_scan_history() -> tuple[list, dict | None, str | None]:
+    if not SCAN_HISTORY_PATH.is_file():
+        return [], None, None
+    try:
+        payload = json.loads(SCAN_HISTORY_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return [], None, None
+
+    if isinstance(payload, list):
+        history = payload
+        latest_result = None
+        latest_scan_at = None
+    elif isinstance(payload, dict):
+        history = payload.get("history", [])
+        latest_result = payload.get("latest_result")
+        latest_scan_at = payload.get("latest_scan_at")
+    else:
+        return [], None, None
+
+    if not isinstance(history, list):
+        history = []
+    safe_history = []
+    for item in history[:100]:
+        if not isinstance(item, dict):
+            continue
+        safe_history.append({
+            "Timestamp": _sanitize_text(item.get("Timestamp", ""), 80),
+            "Target Summary": _sanitize_preview(item.get("Target Summary", ""), 96),
+            "Modalities Active": _sanitize_text(item.get("Modalities Active", ""), 80),
+            "Risk Score": _sanitize_text(item.get("Risk Score", ""), 20),
+            "Verdict": _sanitize_text(item.get("Verdict", ""), 20),
+        })
+
+    if not isinstance(latest_result, dict):
+        latest_result = None
+    elif latest_result:
+        latest_result = _sanitize_result(latest_result)
+    else:
+        latest_result = None
+
+    if not isinstance(latest_scan_at, str):
+        latest_scan_at = None
+    else:
+        latest_scan_at = _sanitize_text(latest_scan_at, 80)
+    return safe_history, latest_result, latest_scan_at
+
+
+def _save_scan_history(history: list, latest_result: dict | None, latest_scan_at: str | None) -> None:
+    SCAN_HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "history": history[:100],
+        "latest_result": _sanitize_result(latest_result) if latest_result else None,
+        "latest_scan_at": latest_scan_at,
+    }
+    temporary_path = SCAN_HISTORY_PATH.with_suffix(".json.tmp")
+    temporary_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    temporary_path.replace(SCAN_HISTORY_PATH)
+
+
+def _clear_scan_history() -> None:
+    st.session_state["scan_history"] = []
+    st.session_state["scan_result"] = None
+    st.session_state["last_scan_at"] = None
+    st.session_state["scan_error"] = None
+    _save_scan_history([], None, None)
 
 
 def _styles(dark: bool) -> None:
@@ -188,11 +363,15 @@ def _single_inspector(policy: str) -> None:
                 scanned_at = datetime.now().astimezone().isoformat(timespec="seconds")
                 st.session_state["last_scan_at"] = scanned_at
                 history = st.session_state.setdefault("scan_history", [])
-                preview = (specific or unified_value or "Static HTML").replace("\n", " ")[:96]
+                preview_source = specific or unified_value or "Static HTML"
+                preview = _sanitize_preview(preview_source, 96)
                 history.insert(0, {"Timestamp": scanned_at, "Target Summary": preview,
                                    "Modalities Active": ", ".join(result["modalities_used"]),
                                    "Risk Score": f"{result['risk_percentage']:.2f}%",
                                    "Verdict": result["final_label"]})
+                history = history[:100]
+                st.session_state["scan_history"] = history
+                _save_scan_history(history, _sanitize_result(result), scanned_at)
             except Exception as exc:
                 st.session_state["scan_result"] = None
                 st.session_state["scan_error"] = f"Scan could not complete: {exc}"
@@ -302,11 +481,22 @@ def _history() -> None:
     history = st.session_state.get("scan_history", [])
     if history:
         st.divider()
-        st.markdown('<div class="section-title">SESSION SCAN HISTORY</div>', unsafe_allow_html=True)
+        title_col, clear_col = st.columns([5, 1], vertical_alignment="center")
+        with title_col:
+            st.markdown('<div class="section-title">SCAN HISTORY</div>', unsafe_allow_html=True)
+        with clear_col:
+            st.button("Clear History", on_click=_clear_scan_history,
+                      use_container_width=True, type="tertiary")
         st.dataframe(pd.DataFrame(history), hide_index=True, use_container_width=True)
 
 
 def main() -> None:
+    if "scan_history_loaded" not in st.session_state:
+        history, latest_result, latest_scan_at = _load_scan_history()
+        st.session_state["scan_history"] = history
+        st.session_state["scan_result"] = latest_result
+        st.session_state["last_scan_at"] = latest_scan_at
+        st.session_state["scan_history_loaded"] = True
     st.session_state.setdefault("security_policy", "Balanced")
     dark = st.toggle("Dark Theme", value=False, key="dark_theme")
     _styles(bool(dark))
