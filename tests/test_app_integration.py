@@ -33,7 +33,7 @@ def test_backend_prediction_returns_displayable_result():
 
 def test_empty_scanner_form_displays_validation_warning():
     app = AppTest.from_file(str(ROOT / "app.py")).run(timeout=45)
-    app.button(key="FormSubmitter:phishing_scanner-Scan for Phishing").click().run(timeout=45)
+    app.button(key="scan_url").click().run(timeout=45)
     assert any("Enter a URL, message, email, or static HTML" in item.value for item in app.warning)
 
 def test_single_screen_scanner_has_presets_and_no_academic_navigation():
