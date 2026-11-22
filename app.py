@@ -322,33 +322,87 @@ def _incident_json(result: dict, scanned_at: str) -> bytes:
 
 
 def _single_inspector(policy: str) -> None:
-    st.markdown('<div class="section-title">UNIFIED INPUT</div>', unsafe_allow_html=True)
-    preset_cols = st.columns(4, gap="small")
-    preset_cols[0].button("Safe Corporate Email", on_click=_set_preset, args=("safe",), use_container_width=True)
-    preset_cols[1].button("Typosquatted URL", on_click=_set_preset, args=("typo",), use_container_width=True)
-    preset_cols[2].button("Spoofed .eml Phishing Attack", on_click=_set_preset, args=("spoofed",), use_container_width=True)
-    preset_cols[3].button("Reset", on_click=_set_preset, args=("reset",), use_container_width=True)
-
     for key in ("unified_input", "specific_url", "static_html"):
         st.session_state.setdefault(key, "")
 
-    with st.form("phishing_scanner", clear_on_submit=False):
-        unified = st.text_area("Unified Input", key="unified_input", height=160,
-                               placeholder="Paste a URL, message, static HTML, or complete raw email.")
-        uploaded = st.file_uploader("Upload .eml, .html, or .txt", type=["eml", "html", "htm", "txt"])
-        specific = st.text_input("URL to inspect", key="specific_url", placeholder="https://example.test/login")
-        static_html = st.text_area("Static HTML Source (Optional)", key="static_html", height=130)
-        submitted = st.form_submit_button("Scan for Phishing", type="primary", use_container_width=True)
+    url_tab, email_tab, html_tab, multimodal_tab = st.tabs([
+        "🔗 URL Checker", "✉️ Email & Text Checker",
+        "🌐 Static HTML Inspector", "🧩 Full Multimodal Scan",
+    ])
+    unified_value = ""
+    specific = ""
+    html_value = ""
+    submitted = False
+
+    with url_tab:
+        st.caption("Analyze a single URL with the active security policy.")
+        url_input = st.text_input("URL", key="specific_url",
+                                  placeholder="Enter URL to scan, e.g., https://example.com/login")
+        st.button("Use sample typosquatted URL", key="sample_url",
+                  on_click=_set_preset, args=("typo",), type="tertiary")
+        url_submitted = st.button("Scan URL", key="scan_url", type="primary", use_container_width=True)
+        if url_submitted:
+            submitted = True
+            specific = url_input
+    with email_tab:
+        st.caption("Paste an email, message, or raw .eml content, or upload a text file.")
+        email_text = st.text_area("Email / Message / Raw .eml", key="unified_input", height=190,
+                                  placeholder="Paste email headers and body, a message, or text to inspect.")
+        email_upload = st.file_uploader("Upload .eml or .txt", type=["eml", "txt"], key="email_upload")
+        st.button("Use sample spoofed email", key="sample_email",
+                  on_click=_set_preset, args=("spoofed",), type="tertiary")
+        email_submitted = st.button("Scan Email / Text", key="scan_email", type="primary",
+                                    use_container_width=True)
+        if email_submitted:
+            submitted = True
+            specific = ""
+            html_value = ""
+            if email_upload is not None:
+                uploaded_text = email_upload.getvalue().decode("utf-8", errors="replace")
+                unified_value = uploaded_text if not email_text.strip() else uploaded_text + "\n\n" + email_text
+            else:
+                unified_value = email_text
+    with html_tab:
+        st.caption("Inspect source statically. The page is never opened and scripts are never executed.")
+        html_source = st.text_area("Static HTML Source", key="static_html", height=190,
+                                   placeholder="Paste HTML source to inspect.")
+        html_upload = st.file_uploader("Upload .html or .htm", type=["html", "htm"], key="html_upload")
+        page_url = st.text_input("Optional page URL", key="html_page_url",
+                                 placeholder="https://example.com/page")
+        html_submitted = st.button("Inspect HTML", key="inspect_html", type="primary",
+                                   use_container_width=True)
+        if html_submitted:
+            submitted = True
+            specific = page_url
+            unified_value = ""
+            html_value = html_source
+            if html_upload is not None:
+                uploaded_text = html_upload.getvalue().decode("utf-8", errors="replace")
+                html_value = uploaded_text if not html_source.strip() else html_source + "\n" + uploaded_text
+    with multimodal_tab:
+        st.caption("Combine signals to exercise multimodal fusion in one scan.")
+        multi_url = st.text_input("URL to inspect", key="multimodal_url",
+                                  placeholder="https://example.com/login")
+        multi_text = st.text_area("Email / Message / Text", key="multimodal_text", height=130,
+                                  placeholder="Paste an email, message, or other text.")
+        multi_html = st.text_area("Static HTML Source", key="multimodal_html", height=130,
+                                  placeholder="Paste static HTML source.")
+        multi_upload = st.file_uploader("Optional .eml, .txt, .html, or .htm", type=["eml", "txt", "html", "htm"], key="multimodal_upload")
+        multi_submitted = st.button("Run Full Multimodal Scan", key="scan_multimodal", type="primary",
+                                    use_container_width=True)
+        if multi_submitted:
+            submitted = True
+            specific = multi_url
+            unified_value = multi_text
+            html_value = multi_html
+        if multi_submitted and multi_upload is not None:
+            uploaded_text = multi_upload.getvalue().decode("utf-8", errors="replace")
+            if Path(multi_upload.name).suffix.lower() in {".eml", ".txt"}:
+                unified_value = uploaded_text if not unified_value.strip() else uploaded_text + "\n\n" + unified_value
+            else:
+                html_value = uploaded_text if not html_value.strip() else html_value + "\n" + uploaded_text
 
     if submitted:
-        html_value = static_html
-        unified_value = unified
-        if uploaded is not None:
-            uploaded_text = uploaded.getvalue().decode("utf-8", errors="replace")
-            if Path(uploaded.name).suffix.lower() in {".eml", ".txt"}:
-                unified_value = uploaded_text if not unified.strip() else uploaded_text + "\n\n" + unified
-            else:
-                html_value = uploaded_text if not static_html.strip() else static_html + "\n" + uploaded_text
         if not any((unified_value.strip(), specific.strip(), html_value.strip())):
             st.session_state["scan_result"] = None
             st.session_state["scan_error"] = "Enter a URL, message, email, or static HTML source before scanning."
@@ -398,7 +452,7 @@ def _single_inspector(policy: str) -> None:
     chart2.plotly_chart(_radar(result), use_container_width=True, config={"displayModeBar": False})
 
     st.markdown('<div class="section-title">THREAT TOKEN X-RAY</div>', unsafe_allow_html=True)
-    preview = _escaped_preview(result, unified, specific)
+    preview = _escaped_preview(result, unified_value, specific)
     st.markdown(f'<div class="xray">{preview}</div>', unsafe_allow_html=True)
 
     link_col, ioc_col = st.columns([1.15, .85], gap="large")
